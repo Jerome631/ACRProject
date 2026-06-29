@@ -3,6 +3,27 @@ import pydicom
 import matplotlib.pyplot as plt
 from matlab_compat import uiputfile, uigetfile, questdlg, msgbox, inputdlg, xlswrite
 
+def get_slice_image(dcm_path):
+    """Return a matplotlib Figure of the low-contrast DICOM slice for spoke counting.
+
+    Args:
+        dcm_path: path to a DICOM file (slice 8, 9, 10, or 11)
+
+    Returns:
+        fig: matplotlib Figure of the full slice
+    """
+    ds = pydicom.dcmread(dcm_path)
+    I  = ds.pixel_array.astype(float)
+    sl = getattr(ds, 'InstanceNumber', '?')
+
+    fig, ax = plt.subplots(figsize=(5, 5))
+    ax.imshow(I, cmap='gray')
+    ax.set_title(f'Low Contrast Insert — Slice {sl}')
+    ax.axis('off')
+    plt.tight_layout()
+    return fig
+
+
 def main():
     plt.ion()
     

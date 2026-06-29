@@ -4,6 +4,35 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matlab_compat import uiputfile, uigetfile, questdlg, msgbox, xlswrite, imcrop, imresize
 
+def get_insert_image(dcm_path):
+    """Return a zoomed matplotlib Figure of the slice-position bar insert.
+
+    This replaces the ginput() interaction for the web UI: the figure is
+    displayed in the browser and the user enters the bar difference manually.
+
+    Args:
+        dcm_path: path to a DICOM file (slice 1 or slice 11)
+
+    Returns:
+        fig: matplotlib Figure (3× magnified crop of the bar insert)
+    """
+    ds    = pydicom.dcmread(dcm_path)
+    I     = ds.pixel_array.astype(float)
+    width = float(ds.Rows)
+    f     = width / 250.0
+
+    rect = [round(100*f), round(20*f), round(40*f), round(60*f)]
+    I2   = imcrop(I, rect)
+    I3   = imresize(I2, 3)
+
+    fig, ax = plt.subplots(figsize=(5, 6))
+    ax.imshow(I3, cmap='gray')
+    ax.set_title('Bar Insert — 3× Zoom\n(measure bottom of each bar)')
+    ax.axis('off')
+    plt.tight_layout()
+    return fig
+
+
 def main():
     plt.ion()
     
