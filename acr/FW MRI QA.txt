@@ -1,0 +1,72 @@
+From: Dara Murphy [Dara.Murphy@olchc.ie]
+Sent: 16 December 2008 11:44
+To: Tuohy, Brendan, UCHG
+Subject: FW: MRI QA
+
+On pain of death !!!! 
+
+
+
+-----Original Message-----
+From: Collette O'Neill [mailto:colletteon@mater.ie] 
+Sent: 12 December 2008 15:30
+To: Dara Murphy
+Subject: MRI QA
+
+Hi Dara,
+
+Attached are all the M-files and an Excel Spreadsheet Template for the
+results - you can save these anywhere on computer but keep them in the
+same folder.
+
+First step would be to open the spreadsheet and save it as something,
+then you can select it when each program asks you which file you want to
+save results to. Make sure you close the Excel file before you run the
+programs as MATLAB won't write the results to it if it is open.
+
+After that if you just run the MRI_QA m-file an interface will pop up
+and you can click whichever test you want to perform. I don't think you
+have the Phantom Test Guidance which might be useful - its at
+http://www.acr.org/SecondaryMainMenuCategories/ACRStore/FeaturedCategori
+es/Q
+ualityandSafety/MagneticResonanceImaging/phantom_test_guidance.aspx
+
+Only certain tests are run on the different series:
+ACR T1 - all tests
+ACR T2 - spatial resolution, slice thickness, slice position,
+uniformity, SNR, low contrast object detectability Site T1 - SNR, low
+contrast object detectability Site T2 - SNR, low contrast object
+detectability When you click on a test it will ask you to specify which
+series - this is just so that it writes the results to the correct
+location in the results spreadsheet. There are spaces in the spreadsheet
+for figures but you would have to put them in manually - haven't
+programmed matlab to do it yet.
+They're not necessary anyway.
+
+Instructions and message boxes pop up during each program - hopefully
+they will be clear and easy to follow but constructive criticism is
+welcome!!
+Every time I've tried my program on new images so far I've encountered
+problems so I'll be surprised if it goes smoothly but fingers crossed.
+
+O one other thing - if for any reason theres an error or you cancel or
+something the interface will close - just run MRI_QA.m again to get it
+back.
+
+Think thats it - give me a call if you've any questions.
+
+Collette
+
+
+
+----------------------------Disclaimer----------------------------------
+----
+This e-mail and any files transmitted with it contain information which
+may be confidential and which may also be privileged and is intended
+solely for the use of the individual or entity to which it is addressed.
+Unless you are the intended recipient you may not copy or use it, or
+disclose it to anyone else. Any opinions expressed are that of the
+individual and not necessarily that of Mater Misericordiae University
+Hospital. 
+------------------------------------------------------------------------
+----
