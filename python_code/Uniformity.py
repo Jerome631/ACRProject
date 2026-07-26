@@ -4,6 +4,58 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matlab_compat import uiputfile, uigetfile, questdlg, msgbox, xlswrite, fspecial, imfilter
 
+def compute(s7_path):
+    """Computation for the Image Intensity Uniformity test
+
+    Args:
+        s7_path: path to slice 7 DICOM file
+
+    Returns:
+        results (dict): {'PIU': float} : Percent Integral Uniformity (%)
+        fig:            matplotlib Figure showing the 200 cm² ROI
+    """
+    ds = pydicom.dcmread(s7_path)
+    I  = ds.pixel_array.astype(float)
+    width = float(ds.Rows)
+    f     = width / 250.0
+
+    h     = fspecial('disk', 6.0 * f)
+    Ifilt = imfilter(I, h)
+
+    x, y = np.nonzero(I > 500)
+    if len(x) == 0:
+        return None, None
+    maxx, minx = x.max(), x.min()
+    maxy, miny = y.max(), y.min()
+    midptx = minx + (maxx - minx) / 2.0
+    midpty = miny + (maxy - miny) / 2.0
+
+    h_idx, w_idx = np.indices(I.shape)
+    dist     = np.hypot(h_idx - midptx, w_idx - midpty)
+    roi_mask = dist < (73.0 * f)
+    intensity = Ifilt[roi_mask]
+
+    if intensity.size == 0:
+        return None, None
+
+    high = intensity.max()
+    low  = intensity.min()
+    if (high + low) == 0:
+        return None, None
+
+    PIU = 100.0 * (1.0 - ((high - low) / (high + low)))
+
+    I_roi_viz = I.copy()
+    I_roi_viz[dist < (79.0 * f)] = 0.0
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    axes[0].imshow(I, cmap='gray');         axes[0].set_title('Original Image — Slice 7');              axes[0].axis('off')
+    axes[1].imshow(I_roi_viz, cmap='gray'); axes[1].set_title('200 cm² ROI (black disc = selected area)'); axes[1].axis('off')
+    plt.tight_layout()
+
+    return {'PIU': PIU}, fig
+
+
 def main():
     plt.ion()
     

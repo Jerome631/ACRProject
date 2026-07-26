@@ -13,6 +13,101 @@ def edge_sobel(I, threshold=None):
         threshold = grad.max() * 0.1
     return (grad >= threshold).astype(int)
 
+def compute(loc_path, s1_path, s5_path):
+    """Computation for geometric accuracy
+
+    Args:
+        loc_path: path to localizer DICOM file
+        s1_path:  path to slice 1 DICOM file
+        s5_path:  path to slice 5 DICOM file
+
+    Returns:
+        results (dict): localizer_length, slice1_vertical, slice1_horizontal,
+                        slice5_vertical, slice5_horizontal, slice5_diag1, slice5_diag2
+        figs (list):    [fig_localizer, fig_slices] : matplotlib Figure objects
+    """
+    from matlab_compat import imcrop, imrotate
+
+    # ── Localizer ──────────────────────────────────────────
+    ds = pydicom.dcmread(loc_path)
+    I  = ds.pixel_array.astype(float)
+    bw = edge_sobel(I, 100)
+
+    u, v = np.nonzero(bw == 1)
+    Nbin = max(int(u.max() - u.min()), 1)
+    counts, _ = np.histogram(u, bins=Nbin, range=(u.min(), u.max()))
+    y_indices  = np.where(counts > counts.max() / 2)[0]
+
+    width = float(ds.Rows)
+    f     = width / 250.0
+    dist  = (y_indices[-1] - y_indices[0]) / f if len(y_indices) >= 2 else 0.0
+
+    fig_loc, axes_loc = plt.subplots(1, 2, figsize=(10, 4))
+    axes_loc[0].imshow(I,  cmap='gray'); axes_loc[0].set_title('Localizer — Original'); axes_loc[0].axis('off')
+    axes_loc[1].imshow(bw, cmap='gray'); axes_loc[1].set_title('Localizer — Edge Map'); axes_loc[1].axis('off')
+    plt.tight_layout()
+
+    # ── Slice 1 ────────────────────────────────────────────
+    ds2 = pydicom.dcmread(s1_path)
+    I2  = ds2.pixel_array.astype(float)
+    width = float(ds2.Rows); f = width / 250.0
+
+    rect     = [round(10*f), round(10*f), width - round(20*f), width - round(20*f)]
+    I2_crop  = imcrop(I2, rect)
+    bw2      = edge_sobel(I2_crop)
+    u2, v2   = np.nonzero(bw2 == 1)
+    maxy2, miny2 = u2.max(), u2.min()
+    maxx2, minx2 = v2.max(), v2.min()
+    midpty = miny2 + (maxy2 - miny2) / 2.0
+    midptx = minx2 + (maxx2 - minx2) / 2.0
+
+    disttopbotSlice1    = (maxy2 - miny2) / f
+    distleftrightSlice1 = (maxx2 - minx2) / f
+
+    # ── Slice 5 ────────────────────────────────────────────
+    ds3      = pydicom.dcmread(s5_path)
+    I3       = ds3.pixel_array.astype(float)
+    I3_crop  = imcrop(I3, rect)
+    bw3      = edge_sobel(I3_crop)
+    u3, v3   = np.nonzero(bw3 == 1)
+    maxy3, miny3 = u3.max(), u3.min()
+    maxx3, minx3 = v3.max(), v3.min()
+    midpty3  = miny3 + (maxy3 - miny3) / 2.0
+    midptx3  = minx3 + (maxx3 - minx3) / 2.0
+
+    disttopbotSlice5    = (maxy3 - miny3) / f
+    distleftrightSlice5 = (maxx3 - minx3) / f
+
+    # Diagonals — original MATLAB code reuses Slice 1 edge indices
+    I4       = imrotate(I3_crop, 45, 'bilinear')
+    bw4      = edge_sobel(I4)
+    distdiag1 = (maxx2 - minx2) / f
+    distdiag2 = (maxy2 - miny2) / f
+
+    fig_slices, axes_s = plt.subplots(1, 3, figsize=(15, 4))
+    axes_s[0].imshow(I2_crop, cmap='gray')
+    axes_s[0].plot([midptx, midptx], [miny2, maxy2], 'r-', lw=2)
+    axes_s[0].plot([minx2, maxx2], [midpty, midpty], 'r-', lw=2)
+    axes_s[0].set_title('Slice 1 — Diameters'); axes_s[0].axis('off')
+    axes_s[1].imshow(I3_crop, cmap='gray')
+    axes_s[1].plot([midptx3, midptx3], [miny3, maxy3], 'r-', lw=2)
+    axes_s[1].plot([minx3, maxx3], [midpty3, midpty3], 'r-', lw=2)
+    axes_s[1].set_title('Slice 5 — Diameters'); axes_s[1].axis('off')
+    axes_s[2].imshow(I4, cmap='gray'); axes_s[2].set_title('Slice 5 — Rotated 45°'); axes_s[2].axis('off')
+    plt.tight_layout()
+
+    results = {
+        'localizer_length':     dist,
+        'slice1_vertical':      disttopbotSlice1,
+        'slice1_horizontal':    distleftrightSlice1,
+        'slice5_vertical':      disttopbotSlice5,
+        'slice5_horizontal':    distleftrightSlice5,
+        'slice5_diag1':         distdiag1,
+        'slice5_diag2':         distdiag2,
+    }
+    return results, [fig_loc, fig_slices]
+
+
 def main():
     plt.ion() # interactive mode
     

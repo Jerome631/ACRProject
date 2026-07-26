@@ -3,6 +3,36 @@ import pydicom
 import matplotlib.pyplot as plt
 from matlab_compat import uiputfile, uigetfile, questdlg, msgbox, inputdlg, xlswrite, imcrop, imresize
 
+def get_insert_image(s1_path):
+    """Return a zoomed matplotlib Figure of the spatial resolution insert.
+
+    Upper-left array → horizontal resolution.
+    Lower-right array → vertical resolution.
+
+    Args:
+        s1_path: path to slice 1 DICOM file
+
+    Returns:
+        fig: matplotlib Figure (3× magnified crop of the spatial resolution insert)
+    """
+    ds    = pydicom.dcmread(s1_path)
+    I     = ds.pixel_array.astype(float)
+    width = float(ds.Rows)
+    f     = width / 256.0
+
+    rect = [60.0 * f, 150.0 * f, 130.0 * f, 50.0 * f]
+    I2   = imcrop(I, rect)
+    I3   = imresize(I2, 3)
+
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.imshow(I3, cmap='gray')
+    ax.set_title('Spatial Resolution Insert — 3× Zoom\n'
+                 'Upper-left array = Horizontal resolution  |  Lower-right array = Vertical resolution')
+    ax.axis('off')
+    plt.tight_layout()
+    return fig
+
+
 def main():
     plt.ion()
     
