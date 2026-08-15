@@ -362,7 +362,7 @@ if "Dashboard" in page:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  GEOMETRIC ACCURACY  →  test_geom_acc.compute()
+#  GEOMETRIC ACCURACY  -  test_geom_acc.compute()
 # ══════════════════════════════════════════════════════════════════════════
 elif "Geometric Accuracy" in page:
     st.markdown("## Geometric Accuracy")
@@ -383,7 +383,7 @@ elif "Geometric Accuracy" in page:
         if st.button("▶  Run Geometric Accuracy", disabled=bool(missing)):
             try:
                 with st.spinner("Analysing images…"):
-                    geo, figs = test_geom_acc.compute(loc_path, s1_path, s5_path)
+                    geo, figs = test_geom_acc.main(loc_path, s1_path, s5_path)
                 R = geo
                 rows = [
                     ("Localizer Length",     f"{R['localizer_length']:.2f} mm",  "146 – 150 mm", 146 <= R["localizer_length"] <= 150),
@@ -408,7 +408,7 @@ elif "Geometric Accuracy" in page:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  SLICE POSITION ACCURACY  →  Slice_Position_Accuracy.get_insert_image()
+#  SLICE POSITION ACCURACY  -  Slice_Position_Accuracy.get_insert_image()
 # ══════════════════════════════════════════════════════════════════════════
 elif "Slice Position" in page:
     st.markdown("## Slice Position Accuracy")
@@ -453,7 +453,7 @@ elif "Slice Position" in page:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  SLICE THICKNESS  →  SliceThicknessFWHM.compute()
+#  SLICE THICKNESS  -  SliceThicknessFWHM.compute()
 # ══════════════════════════════════════════════════════════════════════════
 elif "Slice Thickness" in page:
     st.markdown("## Slice Thickness (FWHM)")
@@ -491,7 +491,7 @@ elif "Slice Thickness" in page:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  UNIFORMITY  →  Uniformity.compute()
+#  UNIFORMITY  -  Uniformity.compute()
 # ══════════════════════════════════════════════════════════════════════════
 elif "Uniformity" in page:
     st.markdown("## Image Intensity Uniformity")
@@ -527,7 +527,7 @@ elif "Uniformity" in page:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  SNR  →  SNR.compute()
+#  SNR  -  SNR.compute()
 # ══════════════════════════════════════════════════════════════════════════
 elif "Signal-to-Noise" in page:
     st.markdown("## Signal-to-Noise Ratio (SNR)")
@@ -572,7 +572,7 @@ elif "Signal-to-Noise" in page:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  GHOSTING  →  Percent_Signal_Ghosting.compute()
+#  GHOSTING  -  Percent_Signal_Ghosting.compute()
 # ══════════════════════════════════════════════════════════════════════════
 elif "Ghosting" in page:
     st.markdown("## Percent Signal Ghosting")
@@ -615,7 +615,7 @@ elif "Ghosting" in page:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  LOW CONTRAST  →  Low_Contrast_Detectability.get_slice_image()
+#  LOW CONTRAST  -  Low_Contrast_Detectability.get_slice_image()
 # ══════════════════════════════════════════════════════════════════════════
 elif "Low Contrast" in page:
     st.markdown("## Low Contrast Detectability")
@@ -664,7 +664,7 @@ elif "Low Contrast" in page:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  HIGH CONTRAST  →  High_Contrast_Spatial_Res.get_insert_image()
+#  HIGH CONTRAST  -  High_Contrast_Spatial_Res.get_insert_image()
 # ══════════════════════════════════════════════════════════════════════════
 elif "High Contrast" in page:
     st.markdown("## High Contrast Spatial Resolution")

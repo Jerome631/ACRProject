@@ -7,16 +7,21 @@ from openpyxl.utils import coordinate_to_tuple
 import matplotlib.pyplot as plt
 from matplotlib.path import Path
 
-# Tkinter imports for dialogs
-import tkinter as tk
-from tkinter import messagebox, simpledialog, filedialog
+# NOTE: tkinter is intentionally NOT imported at module level.
+# Headless environments (e.g. Streamlit Cloud) don't have a display or the
+# _tkinter C extension installed, so importing tkinter at import-time would
+# crash this whole module including the non-GUI helpers below (imcrop,
+# imrotate, xlswrite, etc.) that other code needs regardless of GUI support.
+# Each dialog function below imports tkinter lazily, only when actually called.
 
 def get_tkinter_root():
+    import tkinter as tk
     root = tk.Tk()
     root.withdraw()
     return root
 
 def uigetfile(filter_str="*.*", title="Select File"):
+    from tkinter import filedialog
     root = get_tkinter_root()
     # Parse MATLAB style filter e.g. '*.dcm'
     filetypes = []
@@ -34,6 +39,7 @@ def uigetfile(filter_str="*.*", title="Select File"):
     return fname, pathname + os.sep
 
 def uiputfile(filter_str="*.*", title="Save As"):
+    from tkinter import filedialog
     root = get_tkinter_root()
     filetypes = []
     if filter_str:
@@ -49,6 +55,7 @@ def uiputfile(filter_str="*.*", title="Save As"):
     return fname, pathname + os.sep
 
 def questdlg(message, title="Question", opt1="Yes", opt2="No", default="Yes"):
+    import tkinter as tk
     root = get_tkinter_root()
     # Custom simple dialog with 2 buttons to mimic MATLAB questdlg
     dialog = tk.Toplevel(root)
@@ -80,6 +87,7 @@ def questdlg(message, title="Question", opt1="Yes", opt2="No", default="Yes"):
     return result[0]
 
 def inputdlg(prompts, title="Input Dialog", default_answers=None):
+    import tkinter as tk
     root = get_tkinter_root()
     dialog = tk.Toplevel(root)
     dialog.title(title)
@@ -109,6 +117,7 @@ def inputdlg(prompts, title="Input Dialog", default_answers=None):
     return answers
 
 def msgbox(message, title="Message"):
+    from tkinter import messagebox
     root = get_tkinter_root()
     messagebox.showinfo(title, message)
     return 1
