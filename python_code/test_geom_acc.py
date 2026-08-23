@@ -38,9 +38,15 @@ def compute(loc_path, s1_path, s5_path):
     counts, _ = np.histogram(u, bins=Nbin, range=(u.min(), u.max()))
     y_indices  = np.where(counts > counts.max() / 2)[0]
 
-    width = float(ds.Rows)
-    f     = width / 250.0
-    dist  = (y_indices[-1] - y_indices[0]) / f if len(y_indices) >= 2 else 0.0
+    # Use actual DICOM pixel spacing for accurate mm conversion
+    ps = getattr(ds, 'PixelSpacing', None)
+    if ps is not None and float(ps[0]) > 0:
+        loc_pixel_spacing = float(ps[0])
+    else:
+        # Fallback to scale factor if PixelSpacing tag is missing
+        width = float(ds.Rows)
+        loc_pixel_spacing = 250.0 / width
+    dist  = (y_indices[-1] - y_indices[0]) * loc_pixel_spacing if len(y_indices) >= 2 else 0.0
 
     fig_loc, axes_loc = plt.subplots(1, 2, figsize=(10, 4))
     axes_loc[0].imshow(I,  cmap='gray'); axes_loc[0].set_title('Localizer — Original'); axes_loc[0].axis('off')

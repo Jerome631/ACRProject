@@ -94,15 +94,28 @@ def scan_and_group(root_dir: str) -> dict:
 
 def default_selection(series: dict):
     """
-    Pick sensible defaults when there is only one obvious candidate.
+    Pick sensible defaults for the active and localizer series.
+
+    For the axial series, prefer the one with the most images (slices) so
+    that the full 11-slice ACR phantom acquisition is chosen even when the
+    ZIP also contains single-image or partial series.
 
     Returns (selected_series_uid_or_None, localizer_uid_or_None)
     """
     localizers = {uid: s for uid, s in series.items() if s["is_localizer"] and s["count"] > 0}
     non_local  = {uid: s for uid, s in series.items() if not s["is_localizer"] and s["count"] > 0}
 
-    loc_uid = next(iter(localizers)) if len(localizers) == 1 else None
-    sel_uid = next(iter(non_local)) if len(non_local) == 1 else None
+    # Always pick the localizer with the highest series number — in ACR phantom
+    # studies the relevant localizer is acquired immediately before the phantom
+    # series, so the highest-numbered localizer is the correct one.
+    if localizers:
+        loc_uid = max(localizers, key=lambda u: int(localizers[u]["number"]) if localizers[u]["number"].isdigit() else 0)
+    else:
+        loc_uid = None
+
+    # Pick the axial series with the most slices — the full phantom acquisition
+    sel_uid = max(non_local, key=lambda u: non_local[u]["count"]) if non_local else None
+
     return sel_uid, loc_uid
 
 

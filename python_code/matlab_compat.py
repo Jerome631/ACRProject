@@ -192,10 +192,19 @@ def fspecial(filter_type, param=None):
         raise ValueError(f"Unsupported filter type: {filter_type}")
 
 def imfilter(image, kernel, mode='constant'):
-    # MATLAB's imfilter does correlation by default, with padding.
-    # SciPy's correlate performs correlation.
-    # For default, use mode='constant' (padding with 0).
-    return scipy.ndimage.correlate(image.astype(float), kernel, mode=mode)
+    # MATLAB's imfilter does correlation by default with zero-padding.
+    # For large kernels (e.g. disk radius ~162px in ghosting), scipy.ndimage.correlate
+    # allocates memory proportional to image_size × kernel_size and crashes with MemoryError.
+    # Use FFT-based convolution for large kernels — same mathematical result, far less memory.
+    import scipy.signal
+    img = image.astype(float)
+    ker = kernel.astype(float)
+    kernel_size = max(ker.shape)
+    if kernel_size > 32:
+        # fftconvolve does convolution; flip kernel to get correlation behaviour
+        result = scipy.signal.fftconvolve(img, ker[::-1, ::-1], mode='same')
+        return result
+    return scipy.ndimage.correlate(img, ker, mode=mode)
 
 def imcrop(img, rect):
     # rect is [x, y, w, h] (0-based in Python)

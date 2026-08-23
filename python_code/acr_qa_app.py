@@ -66,11 +66,11 @@ def render_table(rows):
     </tr></thead><tbody>
     """
     for name, val, rng, passed in rows:
-        if passed is True:
+        if passed is not None and bool(passed):
             badge = ('<span style="padding:3px 10px;background:#052E16;color:#4ADE80;'
                      'border:1px solid #16A34A;border-radius:4px;font-family:monospace;'
                      'font-size:11px;font-weight:700">&#10003; PASS</span>')
-        elif passed is False:
+        elif passed is not None and not bool(passed):
             badge = ('<span style="padding:3px 10px;background:#450A0A;color:#FCA5A5;'
                      'border:1px solid #EF4444;border-radius:4px;font-family:monospace;'
                      'font-size:11px;font-weight:700">&#10007; FAIL</span>')
@@ -295,7 +295,7 @@ with st.sidebar:
     for key, label in TEST_KEYS.items():
         if key in res:
             v = res[key].get("passed")
-            dot = "🟢" if v else ("🔴" if v is False else "⚪")
+            dot = "🟢" if (v is not None and bool(v)) else ("🔴" if (v is not None and not bool(v)) else "⚪")
             st.caption(f"{dot} {label}")
 
 
@@ -383,7 +383,7 @@ elif "Geometric Accuracy" in page:
         if st.button("▶  Run Geometric Accuracy", disabled=bool(missing)):
             try:
                 with st.spinner("Analysing images…"):
-                    geo, figs = test_geom_acc.main(loc_path, s1_path, s5_path)
+                    geo, figs = test_geom_acc.compute(loc_path, s1_path, s5_path)
                 R = geo
                 rows = [
                     ("Localizer Length",     f"{R['localizer_length']:.2f} mm",  "146 – 150 mm", 146 <= R["localizer_length"] <= 150),

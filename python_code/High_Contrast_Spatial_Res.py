@@ -24,8 +24,11 @@ def get_insert_image(s1_path):
     I2   = imcrop(I, rect)
     I3   = imresize(I2, 3)
 
+    vmin = max(0, I3.mean() - 1.5 * I3.std())
+    vmax = I3.mean() + 1.5 * I3.std()
+
     fig, ax = plt.subplots(figsize=(10, 4))
-    ax.imshow(I3, cmap='gray')
+    ax.imshow(I3, cmap='gray', vmin=vmin, vmax=vmax)
     ax.set_title('Spatial Resolution Insert — 3× Zoom\n'
                  'Upper-left array = Horizontal resolution  |  Lower-right array = Vertical resolution')
     ax.axis('off')

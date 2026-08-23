@@ -10,18 +10,38 @@ def get_slice_image(dcm_path):
         dcm_path: path to a DICOM file (slice 8, 9, 10, or 11)
 
     Returns:
-        fig: matplotlib Figure of the full slice
+        fig: matplotlib Figure showing full slice + zoomed centre crop
     """
+    import numpy as np
+
     ds = pydicom.dcmread(dcm_path)
     I  = ds.pixel_array.astype(float)
     sl = getattr(ds, 'InstanceNumber', '?')
 
-    fig, ax = plt.subplots(figsize=(5, 5))
-    ax.imshow(I, cmap='gray')
-    ax.set_title(f'Low Contrast Insert — Slice {sl}')
-    ax.axis('off')
+    # Window the image to enhance low-contrast visibility:
+    # Use mean ± 1.5 * std as the display range
+    vmin = max(0, I.mean() - 1.5 * I.std())
+    vmax = I.mean() + 1.5 * I.std()
+
+    # Compute a centre crop (~40 % of image) to zoom in on the insert
+    h, w  = I.shape
+    cy, cx = h // 2, w // 2
+    r      = int(min(h, w) * 0.30)
+    crop   = I[cy - r : cy + r, cx - r : cx + r]
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+
+    axes[0].imshow(I,    cmap='gray', vmin=vmin, vmax=vmax)
+    axes[0].set_title(f'Slice {sl} — Full Image')
+    axes[0].axis('off')
+
+    axes[1].imshow(crop, cmap='gray', vmin=vmin, vmax=vmax)
+    axes[1].set_title(f'Slice {sl} — Centre Crop (count spokes here)')
+    axes[1].axis('off')
+
     plt.tight_layout()
     return fig
+
 
 
 def main():

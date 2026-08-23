@@ -25,8 +25,11 @@ def get_insert_image(dcm_path):
     I2   = imcrop(I, rect)
     I3   = imresize(I2, 3)
 
+    vmin = max(0, I3.mean() - 1.5 * I3.std())
+    vmax = I3.mean() + 1.5 * I3.std()
+
     fig, ax = plt.subplots(figsize=(5, 6))
-    ax.imshow(I3, cmap='gray')
+    ax.imshow(I3, cmap='gray', vmin=vmin, vmax=vmax)
     ax.set_title('Bar Insert — 3× Zoom\n(measure bottom of each bar)')
     ax.axis('off')
     plt.tight_layout()
