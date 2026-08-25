@@ -21,6 +21,8 @@ function remains untouched and still works via the tkinter desktop app.
 """
 
 import sys, os, hashlib
+import io
+from datetime import datetime
 import streamlit as st
 import matplotlib
 matplotlib.use("Agg")          # must come before pyplot import
@@ -138,6 +140,221 @@ def clear_study():
     dicom_loader.cleanup_dir(st.session_state.get("study", {}).get("extract_dir"))
     st.session_state.study = {}
     st.session_state.qa_results = {}
+
+
+def build_excel_report(qa_results, study):
+    """
+    Build an in-memory Excel workbook summarising all completed QA test results.
+    Returns the workbook bytes (suitable for st.download_button).
+    """
+    try:
+        import openpyxl
+        from openpyxl.styles import (
+            PatternFill, Font, Alignment, Border, Side, GradientFill
+        )
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        return None
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "ACR QA Report"
+
+    # ── Colour palette ───────────────────────────────────────────────────────
+    CLR_HEADER_BG   = "0B1628"
+    CLR_HEADER_FG   = "3B82F6"
+    CLR_TITLE_BG    = "071020"
+    CLR_TITLE_FG    = "E2E8F0"
+    CLR_PASS_BG     = "052E16"
+    CLR_PASS_FG     = "4ADE80"
+    CLR_FAIL_BG     = "450A0A"
+    CLR_FAIL_FG     = "FCA5A5"
+    CLR_NA_BG       = "1E293B"
+    CLR_NA_FG       = "94A3B8"
+    CLR_ROW_BG      = "0F1E36"
+    CLR_ROW_ALT_BG  = "0B1628"
+    CLR_ROW_FG      = "CBD5E1"
+    CLR_VAL_FG      = "F1F5F9"
+    CLR_RNG_FG      = "64748B"
+    CLR_BORDER      = "1E3A5F"
+
+    def fill(hex_color):
+        return PatternFill("solid", fgColor=hex_color)
+
+    def font(hex_color, bold=False, size=11):
+        return Font(color=hex_color, bold=bold, size=size, name="Calibri")
+
+    def border():
+        side = Side(style="thin", color=CLR_BORDER)
+        return Border(bottom=side)
+
+    def center():
+        return Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    def left():
+        return Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+    # ── Column widths ────────────────────────────────────────────────────────
+    col_widths = [32, 22, 20, 12]
+    for i, w in enumerate(col_widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    row = 1
+
+    # ── Title block ──────────────────────────────────────────────────────────
+    ws.row_dimensions[row].height = 30
+    ws.merge_cells(f"A{row}:D{row}")
+    c = ws.cell(row=row, column=1,
+                value="ACR MRI PHANTOM — QUALITY ASSURANCE REPORT")
+    c.fill      = fill(CLR_TITLE_BG)
+    c.font      = font(CLR_TITLE_FG, bold=True, size=14)
+    c.alignment = center()
+    row += 1
+
+    # Date / study info
+    now = datetime.now().strftime("%Y-%m-%d  %H:%M")
+    series_desc = ""
+    sel_uid = study.get("selected_uid", "")
+    if sel_uid and sel_uid in study.get("series", {}):
+        s = study["series"][sel_uid]
+        series_desc = f'{s["description"]} — Series {s["number"]} ({s["count"]} images)'
+
+    for label, value in [("Generated", now), ("Active Series", series_desc or "—")]:
+        ws.row_dimensions[row].height = 18
+        ws.merge_cells(f"A{row}:D{row}")
+        c = ws.cell(row=row, column=1, value=f"{label}:  {value}")
+        c.fill      = fill(CLR_TITLE_BG)
+        c.font      = font(CLR_RNG_FG, size=10)
+        c.alignment = left()
+        row += 1
+
+    row += 1  # blank spacer
+
+    # ── Summary block ────────────────────────────────────────────────────────
+    TEST_KEYS_ORDERED = [
+        "geometric", "slice_position", "slice_thickness",
+        "uniformity", "snr", "ghosting", "low_contrast", "high_contrast",
+    ]
+    TEST_LABELS = {
+        "geometric":       "Geometric Accuracy",
+        "slice_position":  "Slice Position Accuracy",
+        "slice_thickness": "Slice Thickness (FWHM)",
+        "uniformity":      "Image Intensity Uniformity",
+        "snr":             "Signal-to-Noise Ratio",
+        "ghosting":        "Percent Signal Ghosting",
+        "low_contrast":    "Low Contrast Detectability",
+        "high_contrast":   "High Contrast Spatial Resolution",
+    }
+
+    ws.row_dimensions[row].height = 20
+    ws.merge_cells(f"A{row}:D{row}")
+    c = ws.cell(row=row, column=1, value="SUMMARY")
+    c.fill      = fill(CLR_HEADER_BG)
+    c.font      = font(CLR_HEADER_FG, bold=True, size=11)
+    c.alignment = left()
+    row += 1
+
+    sum_hdr_labels = ["Test", "Status", "", ""]
+    ws.row_dimensions[row].height = 18
+    for col_i, h in enumerate(sum_hdr_labels, start=1):
+        c = ws.cell(row=row, column=col_i, value=h)
+        c.fill      = fill(CLR_HEADER_BG)
+        c.font      = font(CLR_HEADER_FG, bold=True, size=10)
+        c.alignment = left()
+        c.border    = border()
+    row += 1
+
+    done = passed = failed = 0
+    for key in TEST_KEYS_ORDERED:
+        label = TEST_LABELS.get(key, key)
+        if key in qa_results:
+            done += 1
+            v = qa_results[key].get("passed")
+            if v is not None and bool(v):
+                passed += 1
+                status, bg, fg = "PASS", CLR_PASS_BG, CLR_PASS_FG
+            elif v is not None and not bool(v):
+                failed += 1
+                status, bg, fg = "FAIL", CLR_FAIL_BG, CLR_FAIL_FG
+            else:
+                status, bg, fg = "N/A",  CLR_NA_BG,   CLR_NA_FG
+        else:
+            status, bg, fg = "Not Run", CLR_TITLE_BG, CLR_RNG_FG
+
+        ws.row_dimensions[row].height = 17
+        ws.merge_cells(f"A{row}:C{row}")
+        c = ws.cell(row=row, column=1, value=label)
+        c.fill = fill(CLR_ROW_BG); c.font = font(CLR_ROW_FG); c.alignment = left(); c.border = border()
+        c = ws.cell(row=row, column=4, value=status)
+        c.fill = fill(bg); c.font = font(fg, bold=True); c.alignment = center(); c.border = border()
+        row += 1
+
+    # Totals row
+    ws.row_dimensions[row].height = 18
+    ws.merge_cells(f"A{row}:C{row}")
+    c = ws.cell(row=row, column=1,
+                value=f"Total: {done}/8 completed  |  {passed} Pass  |  {failed} Fail")
+    c.fill = fill(CLR_HEADER_BG); c.font = font(CLR_HEADER_FG, bold=True); c.alignment = left()
+    row += 2  # spacer
+
+    # ── Per-test detail sections ─────────────────────────────────────────────
+    col_headers = ["Measurement", "Measured Value", "ACR Criterion", "Status"]
+
+    for key in TEST_KEYS_ORDERED:
+        if key not in qa_results:
+            continue
+        label = TEST_LABELS.get(key, key)
+        measurements = qa_results[key].get("measurements", [])
+
+        # Section title
+        ws.row_dimensions[row].height = 22
+        ws.merge_cells(f"A{row}:D{row}")
+        c = ws.cell(row=row, column=1, value=label.upper())
+        c.fill = fill(CLR_HEADER_BG); c.font = font(CLR_HEADER_FG, bold=True, size=11)
+        c.alignment = left()
+        row += 1
+
+        # Column header row
+        ws.row_dimensions[row].height = 18
+        for col_i, h in enumerate(col_headers, start=1):
+            c = ws.cell(row=row, column=col_i, value=h)
+            c.fill      = fill(CLR_ROW_ALT_BG)
+            c.font      = font(CLR_HEADER_FG, bold=True, size=9)
+            c.alignment = left()
+            c.border    = border()
+        row += 1
+
+        # Data rows
+        for alt_i, (name, val, rng, passed_val) in enumerate(measurements):
+            if passed_val is not None and bool(passed_val):
+                status_txt, bg, fg = "PASS", CLR_PASS_BG, CLR_PASS_FG
+            elif passed_val is not None and not bool(passed_val):
+                status_txt, bg, fg = "FAIL", CLR_FAIL_BG, CLR_FAIL_FG
+            else:
+                status_txt, bg, fg = "N/A",  CLR_NA_BG,   CLR_NA_FG
+
+            row_bg = CLR_ROW_BG if alt_i % 2 == 0 else CLR_ROW_ALT_BG
+            ws.row_dimensions[row].height = 17
+
+            for col_i, (text, text_color) in enumerate([
+                (name, CLR_ROW_FG),
+                (val,  CLR_VAL_FG),
+                (rng,  CLR_RNG_FG),
+            ], start=1):
+                c = ws.cell(row=row, column=col_i, value=text)
+                c.fill = fill(row_bg); c.font = font(text_color); c.alignment = left(); c.border = border()
+
+            c = ws.cell(row=row, column=4, value=status_txt)
+            c.fill = fill(bg); c.font = font(fg, bold=True); c.alignment = center(); c.border = border()
+            row += 1
+
+        row += 1  # blank line between sections
+
+    # ── Save to bytes ────────────────────────────────────────────────────────
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.getvalue()
 
 
 def require_study():
@@ -265,6 +482,25 @@ with st.sidebar:
         if st.button("Clear study / upload another"):
             clear_study()
             st.rerun()
+
+        # ── Export to Excel ───────────────────────────────────────────────
+        res_now = st.session_state.qa_results
+        if res_now:
+            excel_bytes = build_excel_report(res_now, study)
+            if excel_bytes is None:
+                st.warning("openpyxl not installed — cannot export. Run: pip install openpyxl")
+            else:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+                st.download_button(
+                    label="📥  Export Results to Excel",
+                    data=excel_bytes,
+                    file_name=f"ACR_QA_Report_{timestamp}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    help="Download a formatted Excel report of all completed test results",
+                )
+        else:
+            st.button("📥  Export Results to Excel", disabled=True,
+                      help="Run at least one test first to enable export")
     else:
         st.caption("No study uploaded yet.")
 
